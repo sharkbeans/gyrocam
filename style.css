@@ -1,0 +1,346 @@
+/* ============================================
+   GyroCam — Visual Horizon Stabilizer
+   Mobile-first, dark theme, no frameworks
+   ============================================ */
+
+/* --- Reset & Base --- */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #0a0a0f;
+  --surface: #14141f;
+  --border: #2a2a3a;
+  --text: #e0e0e8;
+  --text-dim: #8888a0;
+  --accent: #4a90d9;
+  --accent-hover: #5ca0e9;
+  --green: #2ecc71;
+  --red: #e74c3c;
+  --yellow: #f39c12;
+  --viewport-size: min(80vw, 80vh, 360px);
+  /* Video is scaled larger than container to prevent black corners during rotation */
+  --video-scale: 1.45;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* --- App Layout --- */
+#app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 12px;
+  gap: 12px;
+  user-select: none;
+}
+
+/* --- Header --- */
+#header {
+  text-align: center;
+}
+
+#header h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+
+.subtitle {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* --- Circular Viewport --- */
+#viewport-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#viewport {
+  position: relative;
+  width: var(--viewport-size);
+  height: var(--viewport-size);
+  border-radius: 50%;
+  overflow: hidden;
+  background: #000;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+}
+
+#camera {
+  /* Scale video larger than the circular container so rotation doesn't expose corners */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(100% * var(--video-scale));
+  height: calc(100% * var(--video-scale));
+  transform: translate(-50%, -50%) rotate(0deg);
+  transform-origin: center center;
+  object-fit: cover;
+  will-change: transform;
+}
+
+/* --- Horizon Line Overlay --- */
+#horizon-line {
+  position: absolute;
+  top: 50%;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.7);
+  transform: translateY(-50%);
+  transition: background-color 0.3s ease;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: 1px;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+#horizon-line.level {
+  background: var(--green);
+  box-shadow: 0 0 8px rgba(46, 204, 113, 0.5);
+}
+
+#horizon-line.tilted {
+  background: var(--red);
+  box-shadow: 0 0 8px rgba(231, 76, 60, 0.5);
+}
+
+/* --- Tilt Readout --- */
+#tilt-readout {
+  position: absolute;
+  bottom: 16%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+#tilt-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2px 10px;
+  border-radius: 12px;
+}
+
+/* --- Status Panel --- */
+#status-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+#status-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 4px 16px;
+  border-radius: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  transition: all 0.3s ease;
+}
+
+#status-badge.level {
+  color: var(--green);
+  border-color: var(--green);
+  background: rgba(46, 204, 113, 0.1);
+}
+
+#status-badge.tilted {
+  color: var(--yellow);
+  border-color: var(--yellow);
+  background: rgba(243, 156, 18, 0.1);
+}
+
+#status-badge.very-tilted {
+  color: var(--red);
+  border-color: var(--red);
+  background: rgba(231, 76, 60, 0.1);
+}
+
+/* --- Debug Panel --- */
+#debug-panel {
+  display: flex;
+  gap: 12px;
+  font-size: 0.65rem;
+  font-family: "SF Mono", "Fira Code", monospace;
+  color: var(--text-dim);
+}
+
+/* --- Controls --- */
+#controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.1s ease;
+  touch-action: manipulation;
+}
+
+.btn:active {
+  transform: scale(0.96);
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #1e1e30;
+}
+
+.btn-tertiary {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+
+.btn-tertiary:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* --- Toggles --- */
+#toggles {
+  display: flex;
+  gap: 16px;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.toggle-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* --- Error Message --- */
+#error-message {
+  max-width: 320px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--red);
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  padding: 10px 16px;
+  border-radius: 10px;
+}
+
+/* --- Landscape Hint --- */
+#landscape-hint {
+  position: fixed;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: var(--yellow);
+  background: rgba(243, 156, 18, 0.12);
+  padding: 4px 12px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+
+/* --- Utility --- */
+.hidden {
+  display: none !important;
+}
+
+/* --- Responsive --- */
+@media (max-height: 600px) {
+  :root {
+    --viewport-size: min(65vw, 55vh, 280px);
+  }
+
+  #header h1 {
+    font-size: 1.1rem;
+  }
+
+  .btn {
+    padding: 8px 14px;
+    font-size: 0.78rem;
+  }
+
+  #app {
+    gap: 8px;
+    padding: 8px;
+  }
+}
+
+@media (orientation: landscape) {
+  :root {
+    --viewport-size: min(50vw, 70vh, 300px);
+  }
+
+  #app {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  #header {
+    width: 100%;
+  }
+
+  #controls {
+    flex-direction: column;
+  }
+}

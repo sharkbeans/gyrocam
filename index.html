@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>GyroCam</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="header">
+      <h1>GyroCam</h1>
+      <p class="subtitle">Visual Horizon Stabilizer</p>
+    </header>
+
+    <div id="viewport-wrapper">
+      <div id="viewport">
+        <video id="camera" autoplay playsinline muted></video>
+        <div id="horizon-line"></div>
+        <div id="tilt-readout">
+          <span id="tilt-value">0.0°</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="status-panel">
+      <div id="status-badge">WAITING</div>
+      <div id="debug-panel" class="hidden">
+        <span id="fps-display">FPS: --</span>
+        <span id="raw-gamma">Raw: --</span>
+        <span id="smooth-gamma">Smooth: --</span>
+      </div>
+    </div>
+
+    <div id="controls">
+      <button id="btn-camera" class="btn btn-primary">Start Camera</button>
+      <button id="btn-motion" class="btn btn-secondary" disabled>Enable Motion</button>
+      <button id="btn-calibrate" class="btn btn-tertiary" disabled>Calibrate</button>
+    </div>
+
+    <div id="toggles">
+      <label class="toggle-label">
+        <input type="checkbox" id="toggle-smoothing" checked>
+        <span>Smoothing</span>
+      </label>
+      <label class="toggle-label">
+        <input type="checkbox" id="toggle-debug">
+        <span>Debug</span>
+      </label>
+    </div>
+
+    <div id="error-message" class="hidden"></div>
+    <div id="landscape-hint" class="hidden">For best results, use portrait orientation</div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
