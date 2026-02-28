@@ -46,6 +46,7 @@ const GyroCam = (() => {
     smoothGamma: document.getElementById('smooth-gamma'),
     errorMessage: document.getElementById('error-message'),
     landscapeHint: document.getElementById('landscape-hint'),
+    indicatorDot: document.querySelector('.indicatorDot'),
   };
 
   // ─── State ───────────────────────────────────────────────────────
@@ -56,9 +57,16 @@ const GyroCam = (() => {
     sensorType: 'none',       // 'generic-sensor' | 'device-orientation' | 'none'
 
     rawGamma: 0,              // Latest raw gamma from sensor (degrees)
+    rawBeta: 0,               // Latest raw beta from sensor (degrees)
     smoothedGamma: 0,         // After low-pass filter
     calibrationOffset: 0,     // Stored offset from calibration
     hasReceivedData: false,   // True once we get a non-zero sensor reading
+
+    // Bubble level dot physics (matches the working reference implementation)
+    dotPx: 50,                // Dot position x (0–98%)
+    dotPy: 50,                // Dot position y (0–98%)
+    dotVx: 0,                 // Dot velocity x
+    dotVy: 0,                 // Dot velocity y
 
     sensorInstance: null,     // Generic Sensor API instance (if used)
     animFrameId: null,        // requestAnimationFrame handle
@@ -213,9 +221,16 @@ const GyroCam = (() => {
               1 - 2 * (y * y + x * x)
             ) * RAD_TO_DEG;
 
+            // Beta (front-to-back tilt) from quaternion — ZXY Euler convention
+            const sinBeta = 2 * (w * x - y * z);
+            const beta = Math.asin(Math.max(-1, Math.min(1, sinBeta))) * RAD_TO_DEG;
+
             if (!Number.isNaN(gamma)) {
               state.rawGamma = gamma;
               state.hasReceivedData = true;
+            }
+            if (!Number.isNaN(beta)) {
+              state.rawBeta = beta;
             }
           }
 
@@ -282,6 +297,7 @@ const GyroCam = (() => {
       function handler(event) {
         attempts++;
         const gamma = event.gamma;
+        const beta = event.beta;
 
         // Some browsers fire an initial event with null/zero — wait for real data
         if (gamma != null && !Number.isNaN(gamma)) {
@@ -292,6 +308,9 @@ const GyroCam = (() => {
           if (gamma !== 0 || attempts > 5) {
             state.hasReceivedData = true;
           }
+        }
+        if (beta != null && !Number.isNaN(beta)) {
+          state.rawBeta = beta;
         }
 
         if (!resolved && attempts >= 3) {
@@ -308,6 +327,9 @@ const GyroCam = (() => {
         if (event.gamma != null && !Number.isNaN(event.gamma)) {
           state.rawGamma = event.gamma;
           state.hasReceivedData = true;
+        }
+        if (event.beta != null && !Number.isNaN(event.beta)) {
+          state.rawBeta = event.beta;
         }
       });
 
@@ -364,6 +386,10 @@ const GyroCam = (() => {
 
   function calibrate() {
     state.calibrationOffset = state.smoothedGamma;
+    state.dotPx = 50;
+    state.dotPy = 50;
+    state.dotVx = 0;
+    state.dotVy = 0;
     dom.btnCalibrate.textContent = 'Recalibrate';
   }
 
@@ -416,6 +442,29 @@ const GyroCam = (() => {
       dom.horizonLine.className = 'tilted';
       dom.statusBadge.className = 'very-tilted';
       dom.statusBadge.textContent = 'TILTED';
+    }
+
+    // ── Bubble level dot physics ──
+    // Velocity accumulates proportional to tilt angle (matching the reference implementation)
+    const UPDATE_RATE = 1 / 60;
+    state.dotVx += state.rawGamma * UPDATE_RATE * 2;
+    state.dotVy += state.rawBeta * UPDATE_RATE;
+
+    state.dotPx += state.dotVx * 0.5;
+    if (state.dotPx > 98 || state.dotPx < 0) {
+      state.dotPx = Math.max(0, Math.min(98, state.dotPx));
+      state.dotVx = 0;
+    }
+
+    state.dotPy += state.dotVy * 0.5;
+    if (state.dotPy > 98 || state.dotPy < 0) {
+      state.dotPy = Math.max(0, Math.min(98, state.dotPy));
+      state.dotVy = 0;
+    }
+
+    if (dom.indicatorDot) {
+      dom.indicatorDot.style.left = state.dotPx + '%';
+      dom.indicatorDot.style.top = state.dotPy + '%';
     }
 
     // ── Debug panel ──

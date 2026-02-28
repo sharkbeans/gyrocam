@@ -67,11 +67,6 @@ html, body {
 }
 
 /* --- Circular Viewport --- */
-#viewport-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
 #viewport {
   position: relative;
@@ -142,6 +137,52 @@ html, body {
   background: rgba(0, 0, 0, 0.4);
   padding: 2px 10px;
   border-radius: 12px;
+}
+
+/* --- Bubble Level --- */
+#viewport-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#bubble-level {
+  position: relative;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Center target ring */
+#bubble-level::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.indicatorDot {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  will-change: left, top;
+  z-index: 1;
+  left: 50%;
+  top: 50%;
 }
 
 /* --- Status Panel --- */
