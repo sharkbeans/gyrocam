@@ -291,6 +291,47 @@ html, body {
   color: var(--text);
 }
 
+/* --- Record Button --- */
+.btn-record {
+  background: var(--surface);
+  color: var(--red);
+  border: 1px solid var(--red);
+}
+
+.btn-record:hover:not(:disabled) {
+  background: rgba(231, 76, 60, 0.15);
+}
+
+.btn-record.recording {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+}
+
+/* --- Record Indicator --- */
+#record-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--red);
+}
+
+.rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  animation: rec-pulse 1s ease-in-out infinite;
+}
+
+@keyframes rec-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
 /* --- Toggles --- */
 #toggles {
   display: flex;

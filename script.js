@@ -38,6 +38,7 @@ const GyroCam = (() => {
     btnCamera: document.getElementById('btn-camera'),
     btnMotion: document.getElementById('btn-motion'),
     btnCalibrate: document.getElementById('btn-calibrate'),
+    btnRecord: document.getElementById('btn-record'),
     toggleSmoothing: document.getElementById('toggle-smoothing'),
     toggleDebug: document.getElementById('toggle-debug'),
     debugPanel: document.getElementById('debug-panel'),
@@ -47,6 +48,9 @@ const GyroCam = (() => {
     errorMessage: document.getElementById('error-message'),
     landscapeHint: document.getElementById('landscape-hint'),
     indicatorDot: document.querySelector('.indicatorDot'),
+    recordCanvas: document.getElementById('record-canvas'),
+    recordIndicator: document.getElementById('record-indicator'),
+    recordTimer: document.getElementById('record-timer'),
   };
 
   // ─── State ───────────────────────────────────────────────────────
@@ -73,6 +77,12 @@ const GyroCam = (() => {
     lastFrameTime: 0,         // For FPS calculation
     frameCount: 0,
     currentFps: 0,
+
+    isRecording: false,
+    mediaRecorder: null,
+    recordedChunks: [],
+    recordStartTime: 0,
+    recordTimerInterval: null,
   };
 
   // ─── Camera ──────────────────────────────────────────────────────
@@ -104,6 +114,7 @@ const GyroCam = (() => {
       dom.btnCamera.textContent = 'Camera Active';
       dom.btnCamera.disabled = true;
       dom.btnMotion.disabled = false;
+      dom.btnRecord.disabled = false;
 
       hideError();
     } catch (err) {
@@ -393,6 +404,113 @@ const GyroCam = (() => {
     dom.btnCalibrate.textContent = 'Recalibrate';
   }
 
+  // ─── Recording ───────────────────────────────────────────────────
+
+  function drawStabilizedFrame(rotationDeg) {
+    const canvas = dom.recordCanvas;
+    const ctx = canvas.getContext('2d');
+    const video = dom.camera;
+    const w = canvas.width;
+    const h = canvas.height;
+
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.rotate(rotationDeg * Math.PI / 180);
+    ctx.drawImage(video, -w / 2, -h / 2, w, h);
+    ctx.restore();
+  }
+
+  function startRecording() {
+    const canvas = dom.recordCanvas;
+    const video = dom.camera;
+
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+
+    const mimeTypes = [
+      'video/webm;codecs=vp9',
+      'video/webm;codecs=vp8',
+      'video/webm',
+      'video/mp4',
+    ];
+
+    let mimeType = '';
+    for (const type of mimeTypes) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        mimeType = type;
+        break;
+      }
+    }
+
+    try {
+      const canvasStream = canvas.captureStream(60);
+      state.mediaRecorder = new MediaRecorder(canvasStream, mimeType ? { mimeType } : {});
+    } catch (e) {
+      showError('Recording is not supported in this browser.');
+      return;
+    }
+
+    state.recordedChunks = [];
+
+    state.mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) state.recordedChunks.push(e.data);
+    };
+
+    state.mediaRecorder.onstop = saveRecording;
+
+    state.mediaRecorder.start(100);
+    state.isRecording = true;
+    state.recordStartTime = Date.now();
+
+    dom.btnRecord.textContent = 'Stop Recording';
+    dom.btnRecord.classList.add('recording');
+    dom.recordIndicator.classList.remove('hidden');
+
+    state.recordTimerInterval = setInterval(updateRecordTimer, 1000);
+  }
+
+  function stopRecording() {
+    if (state.mediaRecorder && state.isRecording) {
+      state.mediaRecorder.stop();
+      state.isRecording = false;
+    }
+
+    clearInterval(state.recordTimerInterval);
+    state.recordTimerInterval = null;
+
+    dom.btnRecord.textContent = 'Record';
+    dom.btnRecord.classList.remove('recording');
+    dom.recordIndicator.classList.add('hidden');
+    dom.recordTimer.textContent = '00:00';
+  }
+
+  function updateRecordTimer() {
+    const elapsed = Math.floor((Date.now() - state.recordStartTime) / 1000);
+    const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const secs = String(elapsed % 60).padStart(2, '0');
+    dom.recordTimer.textContent = mins + ':' + secs;
+  }
+
+  function saveRecording() {
+    const blob = new Blob(state.recordedChunks, { type: state.mediaRecorder.mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+
+    const ext = state.mediaRecorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    a.download = 'gyrocam-' + timestamp + '.' + ext;
+
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    state.recordedChunks = [];
+  }
+
   // ─── Render Loop ─────────────────────────────────────────────────
 
   function startRenderLoop() {
@@ -424,6 +542,11 @@ const GyroCam = (() => {
     // ── Apply CSS transform (translate keeps video centered in circle) ──
     dom.camera.style.transform =
       'translate(-50%, -50%) rotate(' + rotation + 'deg)';
+
+    // ── Draw stabilized frame to canvas for recording ──
+    if (state.isRecording) {
+      drawStabilizedFrame(rotation);
+    }
 
     // ── Update tilt readout ──
     const absTilt = Math.abs(corrected);
@@ -522,6 +645,9 @@ const GyroCam = (() => {
     dom.btnCamera.addEventListener('click', startCamera);
     dom.btnMotion.addEventListener('click', enableMotion);
     dom.btnCalibrate.addEventListener('click', calibrate);
+    dom.btnRecord.addEventListener('click', () => {
+      if (state.isRecording) stopRecording(); else startRecording();
+    });
 
     dom.toggleSmoothing.addEventListener('change', (e) => {
       state.smoothingEnabled = e.target.checked;
@@ -538,6 +664,10 @@ const GyroCam = (() => {
   // ─── Cleanup ─────────────────────────────────────────────────────
 
   function destroy() {
+    if (state.isRecording) {
+      stopRecording();
+    }
+
     if (state.animFrameId) {
       cancelAnimationFrame(state.animFrameId);
       state.animFrameId = null;

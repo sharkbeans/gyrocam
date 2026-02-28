@@ -30,6 +30,10 @@
 
     <div id="status-panel">
       <div id="status-badge">WAITING</div>
+      <div id="record-indicator" class="hidden">
+        <span class="rec-dot"></span>
+        <span id="record-timer">00:00</span>
+      </div>
       <div id="debug-panel" class="hidden">
         <span id="fps-display">FPS: --</span>
         <span id="raw-gamma">Raw: --</span>
@@ -41,7 +45,10 @@
       <button id="btn-camera" class="btn btn-primary">Start Camera</button>
       <button id="btn-motion" class="btn btn-secondary" disabled>Enable Motion</button>
       <button id="btn-calibrate" class="btn btn-tertiary" disabled>Calibrate</button>
+      <button id="btn-record" class="btn btn-record" disabled>Record</button>
     </div>
+
+    <canvas id="record-canvas" class="hidden"></canvas>
 
     <div id="toggles">
       <label class="toggle-label">
