@@ -430,10 +430,12 @@ const GyroCam = (() => {
     canvas.height = video.videoHeight || 720;
 
     const mimeTypes = [
+      'video/mp4;codecs=avc1',
+      'video/mp4;codecs=h264',
+      'video/mp4',
       'video/webm;codecs=vp9',
       'video/webm;codecs=vp8',
       'video/webm',
-      'video/mp4',
     ];
 
     let mimeType = '';
